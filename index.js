@@ -4,7 +4,10 @@ const binance = new Binance().options({
 
 });
 var RSI = require('technicalindicators').RSI;
-// var _ = require('lodash');
+const TelegramBot = require('node-telegram-bot-api');
+const token = '5076495635:AAHBxTfNmbveG0_sSNiu99jQx1nEYlDTMGM';
+const chatId=1497494659;
+const bot = new TelegramBot(token, {polling: true});
 var firebase = require('firebase');
 const firebaseConfig = {
   apiKey: "AIzaSyBsi2kXsDKbPYjt-nHXyG0PyCQ_BcJSzjA",
@@ -21,7 +24,7 @@ let firebaseDB = firebase.database().ref('status');
   var status={
     is_trading: true,
     status: 0, 
-    quatity_coin:1,
+    quatity_coin:0.1,
     lock:true
   }
   var symbol='BNBUSDT'//"ETHUSDT";
@@ -32,12 +35,13 @@ firebaseDB.once('value').then((snapshot) => {if (snapshot.exists()) {status=(sna
 //*******************/ main()
 main();
 function main(){
-  // get_data_socket(symbol);
+  get_data_socket(symbol);
 }
 //************End Main */
 
 var first_run=true;
 var time_final=0;
+var gia_vao_len_truoc=0;
 // Nguon cung cap data here
   async function get_data_socket(symbol){
     try{
@@ -65,81 +69,141 @@ var time_final=0;
             // return _data_close (da hoan thanh)
             // **** [todo] *** there is woking here!
             // **************************************
-
+            if(status.is_trading){
               check_rsi_and_run_trade(_data_close);
-
+            }
             //***************************************/
           }
           
       },candle_c); 
     }catch(e){
-      console.log(e)
+      console.log('loi tai get_data_socket');
+      console.log(e);
     }
   }
   //
-  function check_rsi_and_run_trade(_data_close,chan_tren_rsi100,chan_duoi_rsi100,unlock_rsi14,chan_duoi_rsi14){
+  function check_rsi_and_run_trade(_data_close){
+    var chan_tren_rsi100=52;
+    var chan_duoi_rsi100=43;
+    var unlock_rsi14=40;
+    var chan_duoi_rsi14=27;
+    var remove_nhieu_gia=3;
     let data=bo_render_data_rsi100_rsi14(_data_close);
     if(status.status==0){
       // xet vao lenh buy 1
       if(data[0].rsi100<=chan_duoi_rsi100){
-        // [todo] 
-        //status.lock=true
-        console.log('BUY 1 : ', status.quatity_coin);
-        console.log('o gia : ', data[0].close);
-        console.log('---------------------- ');
         status.status=1;
-        status.lock=true
+        status.lock=true;
+        gia_vao_len_truoc=data[0].close;
+        buy(symbol,status.quatity_coin);
+        save_data(status);
       }
     }else{ 
       // xet rsi100 > chan_tren_rsi100, end thoi
-      if(e.rsi100>=chan_tren_rsi100){
-        console.log('SELL all  ');
-        console.log('o gia : ', data[0].close);
-        console.log('---------------------- ');
+      if(data[0].rsi100>=chan_tren_rsi100){
+        sell(symbol);
         status.status=0;
+        save_data(status);
       }else{
         // xet vao lenh buy 2 3 4
         if(data[0].rsi14<=chan_duoi_rsi14){
           if(!status.lock){
             if(status.status==1){
-              console.log('BUY 2 : ', status.quatity_coin*2);
-              console.log('o gia : ', data[0].close);
-              console.log('---------------------- ');
-              status.status=2;
+              if(gia_vao_len_truoc-data[0].close>=remove_nhieu_gia){
+                gia_vao_len_truoc=data[0].close;
+                status.status=2;
+                buy(symbol,status.quatity_coin*2);
+                status.lock=true;
+                save_data(status);
+              }
             }else if(status.status==2){
-              console.log('BUY 3 : ', status.quatity_coin*4);
-              console.log('o gia : ', data[0].close);
-              console.log('---------------------- ');
-              status.status=3;
+              if(gia_vao_len_truoc-data[0].close>=remove_nhieu_gia){
+                gia_vao_len_truoc=data[0].close;
+                status.status=3;
+                buy(symbol,status.quatity_coin*4);
+                status.lock=true;
+                save_data(status);
+              }
             }
             else if(status.status==3){
-              console.log('BUY 4 : ', status.quatity_coin*8);
-              console.log('o gia : ', data[0].close);
-              console.log('---------------------- ');
-              status.status=4;
+              if(gia_vao_len_truoc-data[0].close>=remove_nhieu_gia){
+                gia_vao_len_truoc=data[0].close;
+                status.status=4;
+                buy(symbol,status.quatity_coin*8);
+                status.lock=true;
+                save_data(status);
+              }
             }
-            status.lock=true;
           }
         }else{
           if(data[0].rsi14>unlock_rsi14){
             status.lock=false;
+            save_data(status);
           }
         }
       }
     }
 
   }
-//  // test
-//   test();
-//  async function test(){
-//     setTimeout(()=>{
-//       console.log(status)
-//     },1000)
-//   }
+//**************xu ly data voi telegram */
+bot.on('message',async (msg) => {
+  let tx=msg.text.toUpperCase();
+  if(tx=='INFO BOT'){
+    get_infor(status)
+  }else if(tx=="OFF BOT"){
+    off_tooll(status);
+    if(status.status>0){
+      sell(symbol);
+    }
+    status.is_trading=false;
+    status.status=0;
+    status.lock=true;
+    save_data(status);
+    
+  }else if(tx=="ON BOT"){
+    on_tooll();
+    status.is_trading=true;
+    save_data(status);
+  }else if(tx[0]=="*"){
+    let message_arr=msg.text.toUpperCase().split("=");
+    if(message_arr.length==2){
+      let coin=Number(message_arr[1]);
+      if(!isNaN(coin)){
+        status.quatity_coin=coin;
+        save_data(status);
+        bot.sendMessage(chatId,`Setup số coin trade ban đầu Ok rồi đó.`);
+      }else{
+        bot.sendMessage(chatId,`Bạn gửi thông số sai rồi.`);
+      }
+
+    }
+  }else{
+    bot.sendMessage(chatId,`
++ "info bot" => thông tin setup.
++ "off bot" => dừng hoạt động Bot. thoát các vị thế hiện tại.
++ "on bot" => cho Bot hoạt động lại.
++ "*coin=0.1" => 0.1 là số coin cần setup
+`);
+  }
+})
 
 /////////////////////////// function ho tro
 function save_data(data){
   firebaseDB.set(data)
+}
+// buy future
+async function buy(symbol,quantity){
+  let buybuy=await binance.futuresMarketBuy( symbol, quantity );
+  console.log("🚀 ~ buybuy", buybuy);
+}
+// sell future
+async function sell(symbol){
+  let quantity= await get_quatity_coin_trading(symbol);
+  console.log("🚀 ~ quantity", quantity)
+  if(quantity>0){
+   let sellsell= await binance.futuresMarketSell( symbol, quantity );
+   console.log("🚀 ~ sellsell", sellsell);
+  }
 }
 //
 async function get_usdt_account(){
@@ -147,7 +211,6 @@ async function get_usdt_account(){
   let usdt=0;
   Object.keys(balance_account).forEach(function(key) {
     if(balance_account[key].asset=='USDT'){
-      console.log("🚀 ~ file: index.js ~ line 98 ~ Object.keys ~ balance_account[key]", balance_account[key])
       usdt=Number(balance_account[key].balance)+Number(balance_account[key].crossUnPnl);
     }
   });
@@ -166,7 +229,6 @@ async function get_quatity_coin_trading(symbol){
   })
   return Number(result);
 }
-//
 // BO TAO DATA  
 function bo_render_data_rsi100_rsi14(data_cl){
   let rsi100=RSI.calculate({values:data_cl,period : 100});
@@ -179,5 +241,28 @@ function bo_render_data_rsi100_rsi14(data_cl){
       close:data_cl[i+100]
     })
   });
-  return data
+  return data;
+}
+// tra ve thong so hien tai cua tool
+async function get_infor(status){
+  let usdt= await get_usdt_account();
+  bot.sendMessage(chatId,`
++ ${status.is_trading?'Bot đang hoạt động':'Bot đang dừng'}.
++ Số lượng coin trade : ${status.quatity_coin}
++ Vị thế trade: ${status.status}
++ USDT hiện có là :${usdt}
+`);
+}
+// Tat tool
+async function off_tooll(status){
+  bot.sendMessage(chatId,`
+Bot đã được tắt, tuy nhiên hiện + Vị thế trade là : ${status.status}.
+Bạn nên vào binance thoát hết vị thế mà tool đã vào lệnh lúc trước nếu có, để đảm bảo an toàn nha!
+${status.status==0?'Hiện tại không có lệnh nào cả.':'hiện tại đang có lệnh đó.'}
+*** Lưu ý : thông thường thì Bot đã tự động thoát vị thế và đóng các lệnh lại luôn rồi đó nhé.
+`);
+}
+// bat tool
+async function on_tooll(){
+  bot.sendMessage(chatId,`Bot đã được bật.`);
 }

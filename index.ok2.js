@@ -4,7 +4,7 @@ const binance = new Binance().options({reconnect:true});
 var RSI = require('technicalindicators').RSI;
 var _ = require('lodash');
 ////////////////////////////////////////
-var symbol='C98USDT'//"ETHUSDT";
+var symbol='BNBUSDT'//"ETHUSDT";
 var candle_c=999;
 
 /////////////////
@@ -40,7 +40,7 @@ setTimeout(()=>{
  var chan_duoi_rsi100=43;
  var unlock_rsi14=40;
  var chan_duoi_rsi14=27;
- var so_luong_coin_mua_ban_dau=50;
+ var so_luong_coin_mua_ban_dau=0.1;
  xu_ly_voi_data(data_cl,chan_tren_rsi100,chan_duoi_rsi100,unlock_rsi14,chan_duoi_rsi14,so_luong_coin_mua_ban_dau)
   
 },5000)

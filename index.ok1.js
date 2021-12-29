@@ -4,7 +4,7 @@ var RSI = require('technicalindicators').RSI;
 var _ = require('lodash');
 ////////////////////////////////////////
 var symbol='BNBUSDT'//"ETHUSDT";
-var candle_c=999;
+var candle_c=16;
 
 /////////////////
 
@@ -19,7 +19,7 @@ async function get_data_socket(symbol){
        
         data_close=[]
         Object.keys(chart).forEach(function(key) {
-          data_close.push(chart[key].close);
+          data_close.push(chart[key].open);
         })
         data_close.pop();
 
@@ -35,13 +35,14 @@ async function get_data_socket(symbol){
 // // //
 setTimeout(()=>{
  let data_cl=[...data_close];
- var rsi=100;
- var chan_tren=54;
- var chan_duoi=44;
- var unlock=45;
- var so_luong_coin_mua_ban_dau=3;
- xu_ly_voi_data(rsi,chan_tren,chan_duoi,unlock,so_luong_coin_mua_ban_dau,data_cl)
-  
+//  var rsi=100;
+//  var chan_tren=54;
+//  var chan_duoi=44;
+//  var unlock=45;
+//  var so_luong_coin_mua_ban_dau=3;
+//  xu_ly_voi_data(rsi,chan_tren,chan_duoi,unlock,so_luong_coin_mua_ban_dau,data_cl)
+  let rsi14= bo_render_data(14,data_cl)
+  console.log("🚀 ~ file: index.ok1.js ~ line 45 ~ setTimeout ~ rsi14", rsi14)
 },5000)
 
 // BO XU LY thong minh hoc thuat
