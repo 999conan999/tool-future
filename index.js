@@ -194,15 +194,17 @@ function save_data(data){
 // buy future
 async function buy(symbol,quantity){
   let buybuy=await binance.futuresMarketBuy( symbol, quantity );
-  console.log("🚀 ~ buybuy", buybuy);
+  // console.log("🚀 ~ buybuy", buybuy);
 }
 // sell future
 async function sell(symbol){
   let quantity= await get_quatity_coin_trading(symbol);
-  console.log("🚀 ~ quantity", quantity)
+  // console.log("🚀 ~ quantity", quantity)
   if(quantity>0){
    let sellsell= await binance.futuresMarketSell( symbol, quantity );
    console.log("🚀 ~ sellsell", sellsell);
+  let usdt= await get_usdt_account(); 
+   back_usdt(usdt);
   }
 }
 //
@@ -265,4 +267,8 @@ ${status.status==0?'Hiện tại không có lệnh nào cả.':'hiện tại đa
 // bat tool
 async function on_tooll(){
   bot.sendMessage(chatId,`Bot đã được bật.`);
+}
+//
+function back_usdt(usdt){
+  bot.sendMessage(chatId,`usdt : ${usdt}`);
 }
